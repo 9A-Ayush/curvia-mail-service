@@ -1,6 +1,40 @@
-# Curevia Email Service
+# Curevia Email Service 📧
 
-A Node.js email service for the Curevia healthcare app using Gmail SMTP.
+A comprehensive email service for the Curevia healthcare platform with **real-time Firebase integration** and automated email workflows.
+
+## 🚀 Features
+
+### Email Capabilities
+- **Doctor Verification Emails** - Approval/rejection notifications
+- **Promotional Campaigns** - Marketing and announcements  
+- **Health Tips Newsletter** - Wellness content distribution
+- **Test Emails** - Development and testing support
+- **Welcome Emails** - New user onboarding
+
+### Real-Time Automation 🔥
+- **Auto-send doctor verification emails** when status changes in Firebase
+- **Welcome emails for new users** upon registration
+- **Scheduled campaign execution** at specified times
+- **Health tip distribution** to subscribed users
+- **Live dashboard** with real-time statistics
+
+### Technical Stack
+- **Email Provider**: Gmail SMTP (~500 emails/day)
+- **Backend**: Node.js + Express
+- **Database**: Firebase Firestore with real-time listeners
+- **Authentication**: Firebase Admin SDK
+- **Styling**: Responsive HTML email templates
+
+## 📊 Real-Time Dashboard
+
+Access the live dashboard at: `http://localhost:3000/dashboard`
+
+Features:
+- Live Firebase statistics
+- Active listener monitoring
+- Email delivery metrics
+- System health status
+- Auto-refresh every 30 seconds
 
 ## Features
 
