@@ -5,7 +5,7 @@ A Node.js email service for the Curevia healthcare app using Gmail SMTP.
 
 <p align="center">
   <a href="https://github.com/9A-Ayush/curevia" download>
-    <img src="https://img.shields.io/badge/MAIN REOP-blue?style=for-the-badge&logo=android" alt="MAIN REOP">
+    <img src="https://img.shields.io/badge/MAIN REPO-blue?style=for-the-badge&logo=android" alt="MAIN REPO">
   </a>
 </p>
 
