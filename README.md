@@ -36,6 +36,14 @@ Features:
 - System health status
 - Auto-refresh every 30 seconds
 
+
+<p align="center">
+  <a href="https://github.com/9A-Ayush/curevia" download>
+    <img src="https://img.shields.io/badge/MAIN REPO-blue?style=for-the-badge&logo=android" alt="MAIN REPO">
+  </a>
+</p>
+
+
 ## Features
 
 - 📧 Doctor verification emails (approval/rejection)
