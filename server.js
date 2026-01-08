@@ -549,16 +549,20 @@ app.use('*', (req, res) => {
   res.status(404).json({ 
     error: 'Endpoint not found',
     availableEndpoints: [
-      'GET /health',
-      'GET /logo-test',
-      'POST /test-email',
-      'POST /send-doctor-verification',
-      'POST /send-promotional-campaign',
-      'POST /send-health-tip',
-      'GET /preferences/:userId',
-      'POST /preferences/:userId',
-      'POST /unsubscribe/:userId',
-      'GET /stats'
+      'GET /health - Service status with real-time stats',
+      'GET /dashboard - Real-time visual dashboard',
+      'GET /stats/realtime - Real-time Firebase statistics',
+      'POST /realtime/restart - Restart real-time listeners',
+      'GET /logo-test - Test logo display',
+      'POST /test-email - Send test email',
+      'POST /send-doctor-verification - Doctor approval/rejection',
+      'POST /send-promotional-campaign - Marketing emails',
+      'POST /send-health-tip - Health newsletters',
+      'GET /preferences/:userId - Get user email preferences',
+      'POST /preferences/:userId - Update user email preferences',
+      'POST /unsubscribe/:userId - Unsubscribe user from emails',
+      'GET /stats - Email statistics',
+      'POST /reset-daily-counter - Reset daily email counter'
     ]
   });
 });
