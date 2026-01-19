@@ -501,6 +501,27 @@ class FirebaseService {
     }
   }
 
+  // Get user data by ID
+  async getUser(userId) {
+    this.checkConfiguration();
+    
+    try {
+      const userDoc = await this.db.collection('users').doc(userId).get();
+      
+      if (!userDoc.exists) {
+        throw new Error(`User with ID ${userId} not found`);
+      }
+      
+      return {
+        id: userDoc.id,
+        ...userDoc.data()
+      };
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      throw error;
+    }
+  }
+
   // Get campaign data
   async getCampaign(campaignId) {
     try {

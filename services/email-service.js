@@ -447,6 +447,127 @@ class EmailService {
     `;
   }
 
+  // Send appointment notification email
+  async sendAppointmentNotification(patientData, doctorData, appointmentInfo) {
+    const subject = `${appointmentInfo.subject} - Curevia`;
+    
+    const htmlContent = `
+      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; text-align: center; color: white;">
+          ${this.getTextLogo()}
+        </div>
+        
+        <div style="background: white; padding: 40px 30px;">
+          <h2 style="color: #333; margin-top: 0;">📅 ${appointmentInfo.type === 'booked' ? 'Appointment Confirmed' : appointmentInfo.type === 'reminder' ? 'Appointment Reminder' : 'Appointment Update'}</h2>
+          
+          <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            Dear ${patientData.firstName || patientData.name},
+          </p>
+          
+          <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            ${appointmentInfo.content}
+          </p>
+          
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h4 style="color: #333; margin-top: 0;">👨‍⚕️ Appointment Details:</h4>
+            <ul style="color: #666; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <li><strong>Doctor:</strong> Dr. ${doctorData.name}</li>
+              <li><strong>Specialization:</strong> ${doctorData.specialization || 'General Medicine'}</li>
+              ${appointmentInfo.appointmentData?.date ? `<li><strong>Date:</strong> ${appointmentInfo.appointmentData.date}</li>` : ''}
+              ${appointmentInfo.appointmentData?.time ? `<li><strong>Time:</strong> ${appointmentInfo.appointmentData.time}</li>` : ''}
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="https://curevia.app/appointments" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              View Appointment
+            </a>
+          </div>
+          
+          <p style="color: #666; margin-bottom: 0; text-align: center; font-size: 14px;">
+            Need help? Contact our support team at support@curevia.com
+          </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+          <div style="margin-bottom: 10px;">
+            ${this.getFooterBranding()}
+          </div>
+          <p style="margin: 0;">© ${new Date().getFullYear()} Curevia. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    await this.sendEmail(patientData.email, subject, htmlContent);
+  }
+
+  // Send payment notification email
+  async sendPaymentNotification(patientData, paymentInfo) {
+    const subject = `${paymentInfo.subject} - Curevia`;
+    
+    const htmlContent = `
+      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; text-align: center; color: white;">
+          ${this.getTextLogo()}
+        </div>
+        
+        <div style="background: white; padding: 40px 30px;">
+          <h2 style="color: #333; margin-top: 0;">💳 ${paymentInfo.type === 'success' ? 'Payment Successful' : paymentInfo.type === 'failed' ? 'Payment Failed' : 'Refund Processed'}</h2>
+          
+          <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            Dear ${patientData.firstName || patientData.name},
+          </p>
+          
+          <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            ${paymentInfo.content}
+          </p>
+          
+          <div style="background: ${paymentInfo.type === 'success' ? '#d4edda' : paymentInfo.type === 'failed' ? '#f8d7da' : '#d1ecf1'}; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid ${paymentInfo.type === 'success' ? '#28a745' : paymentInfo.type === 'failed' ? '#dc3545' : '#17a2b8'};">
+            <h4 style="color: ${paymentInfo.type === 'success' ? '#155724' : paymentInfo.type === 'failed' ? '#721c24' : '#0c5460'}; margin-top: 0;">💰 Payment Details:</h4>
+            <ul style="color: ${paymentInfo.type === 'success' ? '#155724' : paymentInfo.type === 'failed' ? '#721c24' : '#0c5460'}; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <li><strong>Amount:</strong> ₹${paymentInfo.amount}</li>
+              ${paymentInfo.doctorData ? `<li><strong>Doctor:</strong> Dr. ${paymentInfo.doctorData.name}</li>` : ''}
+              ${paymentInfo.paymentData?.method ? `<li><strong>Payment Method:</strong> ${paymentInfo.paymentData.method}</li>` : ''}
+              ${paymentInfo.paymentData?.transactionId ? `<li><strong>Transaction ID:</strong> ${paymentInfo.paymentData.transactionId}</li>` : ''}
+              <li><strong>Date:</strong> ${new Date().toLocaleDateString()}</li>
+            </ul>
+          </div>
+          
+          ${paymentInfo.type === 'success' ? `
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="https://curevia.app/appointments" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              View Appointment
+            </a>
+          </div>
+          ` : paymentInfo.type === 'failed' ? `
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="https://curevia.app/payments/retry" style="background: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              Retry Payment
+            </a>
+          </div>
+          ` : ''}
+          
+          <p style="color: #666; margin-bottom: 0; text-align: center; font-size: 14px;">
+            Need help? Contact our support team at support@curevia.com
+          </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+          <div style="margin-bottom: 10px;">
+            ${this.getFooterBranding()}
+          </div>
+          <p style="margin: 0;">© ${new Date().getFullYear()} Curevia. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    await this.sendEmail(patientData.email, subject, htmlContent);
+  }
+
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }

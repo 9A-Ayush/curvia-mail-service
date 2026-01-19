@@ -4,10 +4,12 @@ require('dotenv').config();
 
 const EmailService = require('./services/email-service');
 const FirebaseService = require('./services/firebase-service');
+const FCMService = require('./services/fcm-service');
 
 const app = express();
 const emailService = new EmailService();
 const firebaseService = new FirebaseService();
+const fcmService = new FCMService();
 
 // Connect email service to firebase for real-time operations
 firebaseService.setEmailService(emailService);
@@ -526,6 +528,450 @@ app.get('/stats', (req, res) => {
   });
 });
 
+// FCM Test endpoint
+app.post('/test-fcm', async (req, res) => {
+  try {
+    const { fcmToken, title, body, data, channelId, sound } = req.body;
+    
+    if (!fcmToken) {
+      return res.status(400).json({ 
+        error: 'fcmToken is required' 
+      });
+    }
+    
+    const notification = {
+      title: title || 'Test Notification',
+      body: body || 'This is a test notification from Curevia',
+      data: data || {},
+      channelId: channelId || 'default',
+      sound: sound || 'default'
+    };
+    
+    const result = await fcmService.sendNotification(fcmToken, notification);
+    
+    res.json({ 
+      success: true, 
+      message: 'FCM notification sent successfully',
+      result: result
+    });
+  } catch (error) {
+    console.error('❌ FCM test error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send FCM notification',
+      details: error.message 
+    });
+  }
+});
+
+// FCM Bulk notification endpoint
+app.post('/send-bulk-fcm', async (req, res) => {
+  try {
+    const { fcmTokens, title, body, data, channelId, sound } = req.body;
+    
+    if (!fcmTokens || !Array.isArray(fcmTokens) || fcmTokens.length === 0) {
+      return res.status(400).json({ 
+        error: 'fcmTokens array is required and must not be empty' 
+      });
+    }
+    
+    const notification = {
+      title: title || 'Curevia Notification',
+      body: body || 'You have a new notification',
+      data: data || {},
+      channelId: channelId || 'default',
+      sound: sound || 'default'
+    };
+    
+    const result = await fcmService.sendBulkNotifications(fcmTokens, notification);
+    
+    res.json({ 
+      success: true, 
+      message: `Bulk FCM notifications sent: ${result.successCount}/${fcmTokens.length}`,
+      result: result
+    });
+  } catch (error) {
+    console.error('❌ Bulk FCM error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send bulk FCM notifications',
+      details: error.message 
+    });
+  }
+});
+
+// FCM Token validation endpoint
+app.post('/validate-fcm-token', async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    
+    if (!fcmToken) {
+      return res.status(400).json({ 
+        error: 'fcmToken is required' 
+      });
+    }
+    
+    const result = await fcmService.validateToken(fcmToken);
+    
+    res.json({ 
+      success: true, 
+      valid: result.valid,
+      error: result.error || null
+    });
+  } catch (error) {
+    console.error('❌ FCM token validation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to validate FCM token',
+      details: error.message 
+    });
+  }
+});
+
+// Send appointment notification (FCM + Email)
+app.post('/send-appointment-notification', async (req, res) => {
+  try {
+    const { 
+      patientId, 
+      doctorId, 
+      appointmentId, 
+      type, // 'booked', 'confirmed', 'cancelled', 'reminder'
+      appointmentData 
+    } = req.body;
+    
+    if (!patientId || !doctorId || !appointmentId || !type) {
+      return res.status(400).json({ 
+        error: 'patientId, doctorId, appointmentId, and type are required' 
+      });
+    }
+    
+    // Get patient and doctor data
+    const patientData = await firebaseService.getUser(patientId);
+    const doctorData = await firebaseService.getDoctor(doctorId);
+    
+    if (!patientData || !doctorData) {
+      return res.status(404).json({ 
+        error: 'Patient or doctor not found' 
+      });
+    }
+    
+    // Prepare notification content based on type
+    let title, body, emailSubject, emailContent;
+    
+    switch (type) {
+      case 'booked':
+        title = 'Appointment Booked';
+        body = `Your appointment with Dr. ${doctorData.name} has been booked`;
+        emailSubject = 'Appointment Confirmation - Curevia';
+        emailContent = `Your appointment with Dr. ${doctorData.name} has been successfully booked.`;
+        break;
+      case 'confirmed':
+        title = 'Appointment Confirmed';
+        body = `Dr. ${doctorData.name} has confirmed your appointment`;
+        emailSubject = 'Appointment Confirmed - Curevia';
+        emailContent = `Dr. ${doctorData.name} has confirmed your appointment.`;
+        break;
+      case 'cancelled':
+        title = 'Appointment Cancelled';
+        body = `Your appointment with Dr. ${doctorData.name} has been cancelled`;
+        emailSubject = 'Appointment Cancelled - Curevia';
+        emailContent = `Your appointment with Dr. ${doctorData.name} has been cancelled.`;
+        break;
+      case 'reminder':
+        title = 'Appointment Reminder';
+        body = `Reminder: You have an appointment with Dr. ${doctorData.name} soon`;
+        emailSubject = 'Appointment Reminder - Curevia';
+        emailContent = `This is a reminder that you have an upcoming appointment with Dr. ${doctorData.name}.`;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid notification type' });
+    }
+    
+    const results = { fcm: null, email: null };
+    
+    // Send FCM notification if patient has FCM token
+    if (patientData.fcmToken) {
+      try {
+        const fcmResult = await fcmService.sendNotification(patientData.fcmToken, {
+          title,
+          body,
+          data: {
+            type: 'appointment',
+            appointmentId,
+            doctorId,
+            notificationType: type
+          },
+          channelId: 'appointments',
+          sound: 'appointment_notification'
+        });
+        results.fcm = fcmResult;
+      } catch (fcmError) {
+        console.error('❌ FCM notification failed:', fcmError);
+        results.fcm = { success: false, error: fcmError.message };
+      }
+    }
+    
+    // Send email notification if patient has email
+    if (patientData.email) {
+      try {
+        await emailService.sendAppointmentNotification(patientData, doctorData, {
+          type,
+          subject: emailSubject,
+          content: emailContent,
+          appointmentData
+        });
+        results.email = { success: true };
+      } catch (emailError) {
+        console.error('❌ Email notification failed:', emailError);
+        results.email = { success: false, error: emailError.message };
+      }
+    }
+    
+    // Log notification activity
+    await firebaseService.logEmailActivity({
+      type: 'appointment_notification',
+      appointmentId,
+      patientId,
+      doctorId,
+      notificationType: type,
+      fcmSent: results.fcm?.success || false,
+      emailSent: results.email?.success || false
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Appointment ${type} notification sent`,
+      results
+    });
+  } catch (error) {
+    console.error('❌ Appointment notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send appointment notification',
+      details: error.message 
+    });
+  }
+});
+
+// Send payment notification (FCM + Email)
+app.post('/send-payment-notification', async (req, res) => {
+  try {
+    const { 
+      patientId, 
+      doctorId, 
+      paymentId, 
+      type, // 'success', 'failed', 'refund'
+      amount,
+      paymentData 
+    } = req.body;
+    
+    if (!patientId || !paymentId || !type || !amount) {
+      return res.status(400).json({ 
+        error: 'patientId, paymentId, type, and amount are required' 
+      });
+    }
+    
+    // Get patient data
+    const patientData = await firebaseService.getUser(patientId);
+    let doctorData = null;
+    
+    if (doctorId) {
+      doctorData = await firebaseService.getDoctor(doctorId);
+    }
+    
+    if (!patientData) {
+      return res.status(404).json({ 
+        error: 'Patient not found' 
+      });
+    }
+    
+    // Prepare notification content based on type
+    let title, body, emailSubject, emailContent;
+    
+    switch (type) {
+      case 'success':
+        title = 'Payment Successful';
+        body = `Your payment of ₹${amount} has been processed successfully`;
+        emailSubject = 'Payment Confirmation - Curevia';
+        emailContent = `Your payment of ₹${amount} has been processed successfully.`;
+        break;
+      case 'failed':
+        title = 'Payment Failed';
+        body = `Your payment of ₹${amount} could not be processed`;
+        emailSubject = 'Payment Failed - Curevia';
+        emailContent = `Your payment of ₹${amount} could not be processed. Please try again.`;
+        break;
+      case 'refund':
+        title = 'Refund Processed';
+        body = `Your refund of ₹${amount} has been processed`;
+        emailSubject = 'Refund Processed - Curevia';
+        emailContent = `Your refund of ₹${amount} has been processed and will reflect in your account soon.`;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid payment notification type' });
+    }
+    
+    const results = { fcm: null, email: null };
+    
+    // Send FCM notification if patient has FCM token
+    if (patientData.fcmToken) {
+      try {
+        const fcmResult = await fcmService.sendNotification(patientData.fcmToken, {
+          title,
+          body,
+          data: {
+            type: 'payment',
+            paymentId,
+            doctorId: doctorId || '',
+            notificationType: type,
+            amount: amount.toString()
+          },
+          channelId: 'payments',
+          sound: 'payment_notification'
+        });
+        results.fcm = fcmResult;
+      } catch (fcmError) {
+        console.error('❌ FCM notification failed:', fcmError);
+        results.fcm = { success: false, error: fcmError.message };
+      }
+    }
+    
+    // Send email notification if patient has email
+    if (patientData.email) {
+      try {
+        await emailService.sendPaymentNotification(patientData, {
+          type,
+          subject: emailSubject,
+          content: emailContent,
+          amount,
+          paymentData,
+          doctorData
+        });
+        results.email = { success: true };
+      } catch (emailError) {
+        console.error('❌ Email notification failed:', emailError);
+        results.email = { success: false, error: emailError.message };
+      }
+    }
+    
+    // Log notification activity
+    await firebaseService.logEmailActivity({
+      type: 'payment_notification',
+      paymentId,
+      patientId,
+      doctorId: doctorId || null,
+      notificationType: type,
+      amount,
+      fcmSent: results.fcm?.success || false,
+      emailSent: results.email?.success || false
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Payment ${type} notification sent`,
+      results
+    });
+  } catch (error) {
+    console.error('❌ Payment notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send payment notification',
+      details: error.message 
+    });
+  }
+});
+
+// Enhanced doctor verification endpoint with FCM
+app.post('/send-doctor-verification-with-fcm', async (req, res) => {
+  try {
+    const { doctorId, status, adminId } = req.body;
+    
+    if (!doctorId || !status) {
+      return res.status(400).json({ 
+        error: 'doctorId and status are required' 
+      });
+    }
+    
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ 
+        error: 'status must be either "approved" or "rejected"' 
+      });
+    }
+    
+    // Get doctor data from Firebase
+    const doctorData = await firebaseService.getDoctor(doctorId);
+    
+    if (!doctorData) {
+      return res.status(404).json({ 
+        error: 'Doctor not found' 
+      });
+    }
+    
+    const results = { fcm: null, email: null };
+    
+    // Prepare notification content
+    const title = status === 'approved' ? 'Verification Approved' : 'Verification Rejected';
+    const body = status === 'approved' 
+      ? 'Congratulations! Your doctor verification has been approved'
+      : 'Your doctor verification has been rejected. Please contact support for more information';
+    
+    // Send FCM notification if doctor has FCM token
+    if (doctorData.fcmToken) {
+      try {
+        const fcmResult = await fcmService.sendNotification(doctorData.fcmToken, {
+          title,
+          body,
+          data: {
+            type: 'verification',
+            doctorId,
+            status,
+            adminId: adminId || ''
+          },
+          channelId: 'verification',
+          sound: 'verification_notification'
+        });
+        results.fcm = fcmResult;
+      } catch (fcmError) {
+        console.error('❌ FCM notification failed:', fcmError);
+        results.fcm = { success: false, error: fcmError.message };
+      }
+    }
+    
+    // Send email notification
+    try {
+      await emailService.sendDoctorVerificationEmail(doctorData, status);
+      results.email = { success: true };
+    } catch (emailError) {
+      console.error('❌ Email notification failed:', emailError);
+      results.email = { success: false, error: emailError.message };
+    }
+    
+    // Update doctor status in Firebase
+    if (adminId) {
+      await firebaseService.updateDoctorStatus(doctorId, status, adminId);
+    }
+    
+    // Log notification activity
+    await firebaseService.logEmailActivity({
+      type: 'doctor_verification_with_fcm',
+      doctorId: doctorId,
+      status: status,
+      recipientEmail: doctorData.email,
+      adminId: adminId,
+      fcmSent: results.fcm?.success || false,
+      emailSent: results.email?.success || false
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `${status} notification sent to Dr. ${doctorData.name}`,
+      results,
+      stats: emailService.getStats()
+    });
+  } catch (error) {
+    console.error('❌ Doctor verification with FCM error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send doctor verification notification',
+      details: error.message 
+    });
+  }
+});
+
 // Reset daily counter endpoint (for cron jobs)
 app.post('/reset-daily-counter', (req, res) => {
   emailService.resetDailyCount();
@@ -555,7 +1001,13 @@ app.use('*', (req, res) => {
       'POST /realtime/restart - Restart real-time listeners',
       'GET /logo-test - Test logo display',
       'POST /test-email - Send test email',
-      'POST /send-doctor-verification - Doctor approval/rejection',
+      'POST /test-fcm - Send test FCM notification',
+      'POST /send-bulk-fcm - Send bulk FCM notifications',
+      'POST /validate-fcm-token - Validate FCM token',
+      'POST /send-appointment-notification - Send appointment notification (FCM + Email)',
+      'POST /send-payment-notification - Send payment notification (FCM + Email)',
+      'POST /send-doctor-verification - Doctor approval/rejection (Email only)',
+      'POST /send-doctor-verification-with-fcm - Doctor approval/rejection (FCM + Email)',
       'POST /send-promotional-campaign - Marketing emails',
       'POST /send-health-tip - Health newsletters',
       'GET /preferences/:userId - Get user email preferences',
@@ -575,13 +1027,21 @@ const server = app.listen(PORT, () => {
   console.log(`🔑 Using Gmail SMTP (~500 emails/day free)`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔥 Firebase real-time listeners: ACTIVE`);
+  console.log(`📱 FCM Service: ACTIVE`);
   console.log('📊 Available endpoints:');
   console.log('   GET  /health - Service status with real-time stats');
+  console.log('   GET  /dashboard - Real-time visual dashboard');
   console.log('   GET  /stats/realtime - Real-time Firebase statistics');
   console.log('   POST /realtime/restart - Restart real-time listeners');
   console.log('   GET  /logo-test - Test logo display');
   console.log('   POST /test-email - Send test email');
-  console.log('   POST /send-doctor-verification - Doctor approval/rejection');
+  console.log('   POST /test-fcm - Send test FCM notification');
+  console.log('   POST /send-bulk-fcm - Send bulk FCM notifications');
+  console.log('   POST /validate-fcm-token - Validate FCM token');
+  console.log('   POST /send-appointment-notification - Appointment notifications (FCM + Email)');
+  console.log('   POST /send-payment-notification - Payment notifications (FCM + Email)');
+  console.log('   POST /send-doctor-verification - Doctor approval/rejection (Email only)');
+  console.log('   POST /send-doctor-verification-with-fcm - Doctor approval/rejection (FCM + Email)');
   console.log('   POST /send-promotional-campaign - Marketing emails');
   console.log('   POST /send-health-tip - Health newsletters');
   console.log('   GET  /stats - Email statistics');
@@ -591,6 +1051,13 @@ const server = app.listen(PORT, () => {
   console.log('   • Welcome emails for new users');
   console.log('   • Scheduled campaign execution');
   console.log('   • Health tip distribution');
+  console.log('');
+  console.log('📱 FCM Features:');
+  console.log('   • Push notifications for appointments');
+  console.log('   • Payment status notifications');
+  console.log('   • Doctor verification notifications');
+  console.log('   • Bulk notification support');
+  console.log('   • Token validation');
 });
 
 // Graceful shutdown
