@@ -10,9 +10,13 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+# Keep example but not actual env
+!.env.example
 
 # Firebase
 serviceAccountKey.json
+# Keep template but not the actual key
+!serviceAccountKey.json.template
 
 # Logs
 logs

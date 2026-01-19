@@ -1,77 +1,105 @@
-# Curevia Email Service 📧
+# Curevia Email Service
 
-A comprehensive email service for the Curevia healthcare platform with **real-time Firebase integration** and automated email workflows.
+Complete email and FCM notification service for the Curevia healthcare app.
 
-## 🚀 Features
+## 🆕 Recent Updates
 
-### Email Capabilities
-- **Doctor Verification Emails** - Approval/rejection notifications
-- **Promotional Campaigns** - Marketing and announcements  
-- **Health Tips Newsletter** - Wellness content distribution
-- **Test Emails** - Development and testing support
-- **Welcome Emails** - New user onboarding
-
-### Real-Time Automation 🔥
-- **Auto-send doctor verification emails** when status changes in Firebase
-- **Welcome emails for new users** upon registration
-- **Scheduled campaign execution** at specified times
-- **Health tip distribution** to subscribed users
-- **Live dashboard** with real-time statistics
-
-### Technical Stack
-- **Email Provider**: Gmail SMTP (~500 emails/day)
-- **Backend**: Node.js + Express
-- **Database**: Firebase Firestore with real-time listeners
-- **Authentication**: Firebase Admin SDK
-- **Styling**: Responsive HTML email templates
-
-## 📊 Real-Time Dashboard
-
-Access the live dashboard at: `http://localhost:3000/dashboard`
-
-Features:
-- Live Firebase statistics
-- Active listener monitoring
-- Email delivery metrics
-- System health status
-- Auto-refresh every 30 seconds
-
-
-<p align="center">
-  <a href="https://github.com/9A-Ayush/curevia" download>
-    <img src="https://img.shields.io/badge/MAIN REPO-blue?style=for-the-badge&logo=android" alt="MAIN REPO">
-  </a>
-</p>
-
+### **v1.4.0 - Security & Repository Integration** (January 19, 2026)
+- 🔐 **Security Enhancement** - Email service now properly excluded from main repository
+- 📚 **Documentation Sync** - Updated integration with main Curevia repository
+- 🛡️ **Environment Protection** - Enhanced security for sensitive configuration files
+- 🔗 **Repository Separation** - Email service maintained as separate module for security
+- 📝 **Setup Instructions** - Updated deployment and configuration guidelines
 
 ## Features
 
-- 📧 Doctor verification emails (approval/rejection)
-- 🎯 Promotional email campaigns
-- 💡 Health tips newsletters
-- 🧪 Email testing capabilities
-- 📊 Email statistics and tracking
-- 🔧 User preference management
-- 🚫 Unsubscribe functionality
+- **Email Notifications**: Doctor verification, appointment confirmations, payment receipts
+- **FCM Push Notifications**: Real-time notifications for appointments, payments, verification
+- **Real-time Firebase Integration**: Auto-triggers based on database changes
+- **Dual Notification System**: Both email and push notifications for critical events
 
-## Setup
+## Quick Start
 
-### 1. Install Dependencies
+⚠️ **CRITICAL SECURITY**: This service contains sensitive credentials and must be configured properly.
 
-```bash
-cd email-service
-npm install
-```
+### 🔐 **Security Setup (REQUIRED)**
 
-### 2. Gmail App Password Setup
+1. **Copy template files**:
+   ```bash
+   # Copy environment template
+   cp .env.example .env
+   
+   # Copy Firebase service account template
+   cp serviceAccountKey.json.template serviceAccountKey.json
+   ```
 
-1. **Enable 2-Factor Authentication** on your Gmail account
-2. **Go to** [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. **Select Mail** → **Other (Custom name)**
-4. **Enter** "Curevia Email Service"
-5. **Copy the 16-character password**
+2. **Configure credentials** (NEVER commit these files):
+   ```bash
+   # Edit .env with your actual credentials
+   # Edit serviceAccountKey.json with your Firebase service account key
+   # Download actual serviceAccountKey.json from Firebase Console
+   ```
 
-### 3. Environment Configuration
+3. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+4. **Start the service**:
+   ```bash
+   npm start
+   ```
+
+5. **Test FCM integration**:
+   ```bash
+   # Get FCM token from Flutter app debug screen first
+   node test-fcm.js
+   ```
+
+### ⚠️ **NEVER COMMIT THESE FILES**:
+- `.env` (contains real API keys and credentials)
+- `serviceAccountKey.json` (contains Firebase private key)
+- Any file with actual passwords or API keys
+
+## API Endpoints
+
+### Core Endpoints
+- `GET /health` - Service status and stats
+- `GET /dashboard` - Real-time visual dashboard
+
+### FCM Notifications
+- `POST /test-fcm` - Send test notification
+- `POST /validate-fcm-token` - Validate FCM token
+- `POST /send-appointment-notification` - Appointment notifications
+- `POST /send-payment-notification` - Payment notifications
+- `POST /send-doctor-verification-with-fcm` - Doctor verification (Email + FCM)
+
+### Email Only
+- `POST /test-email` - Send test email
+- `POST /send-doctor-verification` - Doctor verification (Email only)
+- `POST /send-promotional-campaign` - Marketing emails
+- `POST /send-health-tip` - Health newsletters
+
+## Testing
+
+1. **Start the service**: `npm start`
+2. **Get FCM token**: Run Flutter app → Debug screen → "Test FCM Integration"
+3. **Update test file**: Edit `test-fcm.js` with your token
+4. **Run test**: `node test-fcm.js`
+
+## Configuration
+
+The service uses Firebase Admin SDK and requires:
+- `serviceAccountKey.json` - Firebase service account key
+- `.env` file with email credentials
+- Flutter app with matching Firebase project ID
+
+## Real-time Features
+
+The service automatically listens for Firebase changes and sends notifications for:
+- New doctor registrations → Welcome emails
+- Admin verification decisions → Notification emails + FCM
+- Scheduled campaigns → Automatic execution
 
 Update `.env` file:
 
@@ -305,11 +333,37 @@ The service expects these Firestore collections:
 
 ## Security Notes
 
-- Never commit `.env` file
+⚠️ **CRITICAL SECURITY UPDATE (January 19, 2026)**
+
+This email service is now **completely excluded** from the main Curevia repository for security reasons:
+
+### 🔐 **Repository Security**
+- **Main Repository**: https://github.com/9A-Ayush/curevia.git (email-service folder excluded)
+- **Email Service**: Maintained separately with sensitive configurations
+- **Environment Files**: Never commit `.env` or `serviceAccountKey.json` files
+- **API Keys**: All sensitive keys stored in environment variables only
+
+### 🛡️ **Security Best Practices**
+- **NEVER commit `.env` file** - Contains real Gmail credentials and API keys
+- **NEVER commit `serviceAccountKey.json`** - Contains Firebase private key
+- **Use template files** - Copy from `.env.example` and `serviceAccountKey.json.template`
+- **Rotate credentials regularly** - Change passwords and API keys periodically
 - Use environment variables in production
 - Implement rate limiting for production
 - Validate all input data
 - Use HTTPS in production
+- Keep service account keys secure and rotate regularly
+
+### 📁 **File Protection**
+The following files should **NEVER** be committed to version control:
+- `.env` - Contains email credentials and API keys
+- `serviceAccountKey.json` - Firebase admin SDK key
+- Any files containing actual API keys or passwords
+
+### ✅ **Template Files (Safe to Commit)**
+- `.env.example` - Template for environment variables
+- `serviceAccountKey.json.template` - Template for Firebase service account
+- All other configuration files without sensitive data
 
 ## Monitoring
 
@@ -325,9 +379,19 @@ For issues or questions:
 - Verify Resend API key is valid
 - Ensure Firebase credentials are correct
 
+## 🔗 Integration with Main Repository
+
+This email service integrates with the main Curevia app:
+- **Main Repository**: https://github.com/9A-Ayush/curevia.git
+- **Integration**: Called via HTTP API from Flutter app
+- **Security**: Completely separated for sensitive data protection
+- **Deployment**: Independent deployment and scaling
+
 ---
 
 **Ready to send emails! 🚀**
 
 Monthly limit: 3,000 emails free with Resend
 Perfect for doctor verifications and promotional campaigns.
+
+**Security First**: This service is maintained separately from the main repository to protect sensitive email credentials and API keys.
